@@ -1,15 +1,21 @@
+''' Questo programma calcola il Lotto Economico di Ordinazione (EOQ) e i
+costi totali associati, sia da input manuale che da un file JSON.
+'''
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import math
 import json
 
-# Costanti
-VERSION = "Beta 3"
-AUTHOR = "Mirko Benenati"
-json_file_path = "dati.json"
+# Costanti globali
+VERSIONE = "1.0"
+AUTORE = "Mirko Benenati"
+PERCORSO_JSON = "dati.json"
 
-class EOQ_calculator:
-    # Classe principale che racchiude la logica per il calcolo dell'EOQ.
+
+class EOQCalculator:
+    ''' Classe principale che racchiude la logica per il calcolo dell'EOQ 
+    e dei vari costi '''
+
     def __init__(self):
         self.anno = 0
         self.domanda_annua = 0.0
@@ -22,8 +28,8 @@ class EOQ_calculator:
         self.ordini_annui = 0.0
         self.tempo_tra_ordini = 0.0
 
-    def calculate(self):
-        # questa funzione si occupa dei calcoli (EOQ e costi totali)
+    def calculate_EOQ(self):
+        # Questa funzione si occupa dei calcoli (EOQ e costi totali)
 
         # Calcolo del Lotto Economico di Ordinazione (EOQ)
         self.eoq = math.sqrt(
@@ -54,37 +60,59 @@ class EOQ_calculator:
             365 / self.ordini_annui
         )
 
-    def calculate_from_json(self, json_file_path):
-        ''' questa funzione legge i dati appartenenti a diversi anni 
+    def read_from_json(self, PERCORSO_JSON):
+        ''' Questa funzione legge i dati appartenenti a diversi anni 
         da un file JSON e itera ad ogni anno per calcolare l'EOQ '''
 
         try:
-            with open(json_file_path, 'r') as file:
-                dati = json.load(file)
+            with open(PERCORSO_JSON, 'r') as file:
+                data = json.load(file)
                 results = []
-                for record in dati:
-                    self.anno = record.get("anno", 0)
-                    self.domanda_annua = record.get("domanda_annua", 0.0)
-                    self.costo_setup = record.get("costo_setup", 0.0)
-                    self.costo_mantenimento = record.get("costo_mantenimento", 0.0)
-
+                invalid_years = []  # Tiene traccia degli anni non validi
+                
+                for record in data:
+                    # Estrazione e validazione dell'anno
+                    year = record.get("anno", 0)
+                    if year <= 1970:
+                        invalid_years.append(year)
+                        continue  # Salta il record con anno non valido
+                    
+                    # Estrazione e validazione degli altri campi
+                    demand = record.get("domanda_annua", 0.0)
+                    setup = record.get("costo_setup", 0.0)
+                    holding = record.get("costo_mantenimento", 0.0)
+                    
+                    # Controllo che tutti i valori siano numeri positivi
                     if not all(
-                        isinstance(value, (int, float)) and value > 0
-                        for value in [
-                            self.domanda_annua,
-                            self.costo_setup,
-                            self.costo_mantenimento
-                        ]
+                        isinstance(val, (int, float)) and val > 0
+                        for val in [demand, setup, holding]
                     ):
-                        print(f"ERRORE: Valori non validi per l'anno {self.anno}.")
+                        messagebox.showerror(
+                            "ERRORE", 
+                            f"Valori non validi per l'anno {year}. Devono essere numeri positivi."
+                        )
                         continue
                     
-                    self.calculate()
+                    # Assegnazione e calcolo
+                    self.anno = year
+                    self.domanda_annua = demand
+                    self.costo_setup = setup
+                    self.costo_mantenimento = holding
+                    self.calculate_EOQ()
                     results.append(self.get_results_dict())
-                return results
+                
+                # Mostra un avviso riepilogativo per gli anni non validi
+                if invalid_years:
+                    years_str = ", ".join(map(str, invalid_years))
+                    messagebox.showwarning(
+                        "Anni non validi",
+                        f"Sono stati saltati {len(invalid_years)} record con anni non validi: {years_str}"
+                    )
+                
+                return results, invalid_years
 
         except FileNotFoundError:
-            return [{"error": f"ERRORE: Il file {json_file_path} non è stato trovato."}]
+            return [{"error": f"ERRORE: Il file {PERCORSO_JSON} non è stato trovato."}]
         except json.JSONDecodeError:
             return [{"error": "ERRORE: Formato JSON non valido."}]
     
@@ -92,6 +120,7 @@ class EOQ_calculator:
         """Restituisce i risultati come dizionario"""
         return {
             "Anno": int(self.anno),
+            "Domanda Annua (pz)": int(round(self.domanda_annua)),
             "EOQ (pz)": int(round(self.eoq)),
             "Costo Ordini (€)": f"{self.costi_ordinazione:.2f}",
             "Costo Magazzino (€)": f"{self.costi_mantenimento:.2f}",
@@ -102,10 +131,13 @@ class EOQ_calculator:
 
 
 class EOQ_GUI:
+    # Classe principale che gestisce la GUI
+
     def __init__(self, master):
         self.master = master
-        master.title(f"EOQ Calculator {VERSION}")
-        master.geometry("900x600")
+        master.title(f"EOQ Calculator {VERSIONE}")
+        master.geometry("1000x600")
+        master.minsize(width=1000, height=600) # stabilisce la dimnensione minima della finestra
         master.configure(bg="#f0f0f0")
         
         # Stile per i widget
@@ -132,7 +164,7 @@ class EOQ_GUI:
         
         ttk.Label(
             header_frame, 
-            text=f"Versione {VERSION} - by {AUTHOR}",
+            text=f"VERSIONE {VERSIONE} - by {AUTORE}",
             font=("Arial", 9)
         ).pack(side=tk.RIGHT, padx=10)
         
@@ -143,7 +175,7 @@ class EOQ_GUI:
         self.manual_btn = ttk.Button(
             button_frame,
             text="Calcolo Manuale",
-            command=self.open_manual_window,
+            command=self.user_input_window,
             style="TButton"
         )
         self.manual_btn.pack(side=tk.LEFT, padx=5)
@@ -151,7 +183,7 @@ class EOQ_GUI:
         self.json_btn = ttk.Button(
             button_frame,
             text="Calcola da JSON",
-            command=self.calcola_da_json,
+            command=self.calculate_from_json,
             style="TButton"
         )
         self.json_btn.pack(side=tk.LEFT, padx=5)
@@ -169,8 +201,9 @@ class EOQ_GUI:
         results_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
         
         # Treeview
-        columns = ("Anno", "EOQ (pz)", "Costo Ordini (€)", "Costo Magazzino (€)", 
-                   "Costo Totale (€)", "Ordini per Anno", "Giorni tra ordini")
+        columns = ("Anno", "Domanda Annua (pz)", "EOQ (pz)", "Costo Ordini (€)",
+                   "Costo Magazzino (€)", "Costo Totale (€)", "Ordini per Anno",
+                   "Giorni tra ordini")
         
         self.results_tree = ttk.Treeview(
             results_frame, 
@@ -181,7 +214,7 @@ class EOQ_GUI:
         )
         
         # Configurazione colonne
-        col_widths = [80, 80, 120, 130, 120, 100, 120]
+        col_widths = [80, 150, 100, 120, 140, 120, 120, 120]
         for col, width in zip(columns, col_widths):
             self.results_tree.heading(col, text=col)
             self.results_tree.column(col, width=width, anchor=tk.CENTER)
@@ -204,37 +237,37 @@ class EOQ_GUI:
         status_bar = ttk.Label(master, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     
-    def open_manual_window(self):
+    def user_input_window(self):
         # Apre la finestra per l'inserimento manuale
 
-        manual_win = tk.Toplevel(self.master)
-        manual_win.title("Calcolo Manuale")
-        manual_win.geometry("400x300")
-        manual_win.resizable(False, False)
-        manual_win.grab_set()
+        manual_window = tk.Toplevel(self.master)
+        manual_window.title("Calcolo Manuale")
+        manual_window.geometry("400x300")
+        manual_window.resizable(False, False)
+        manual_window.grab_set()
         
         # Frame principale
-        input_frame = ttk.Frame(manual_win, padding=20)
+        input_frame = ttk.Frame(manual_window, padding=20)
         input_frame.pack(fill=tk.BOTH, expand=True)
         
         # Variabili
-        anno_var = tk.StringVar()
-        domanda_var = tk.StringVar()
+        year_var = tk.StringVar()
+        demand_var = tk.StringVar()
         setup_var = tk.StringVar()
-        mantenimento_var = tk.StringVar()
+        holding_var = tk.StringVar()
         
         # Etichette e campi input
         ttk.Label(input_frame, text="Anno di riferimento:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-        ttk.Entry(input_frame, textvariable=anno_var).grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
+        ttk.Entry(input_frame, textvariable=year_var).grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW)
         
         ttk.Label(input_frame, text="Domanda annua:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        ttk.Entry(input_frame, textvariable=domanda_var).grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
+        ttk.Entry(input_frame, textvariable=demand_var).grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW)
         
         ttk.Label(input_frame, text="Costo di setup:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         ttk.Entry(input_frame, textvariable=setup_var).grid(row=2, column=1, padx=5, pady=5, sticky=tk.EW)
         
         ttk.Label(input_frame, text="Costo di mantenimento:").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-        ttk.Entry(input_frame, textvariable=mantenimento_var).grid(row=3, column=1, padx=5, pady=5, sticky=tk.EW)
+        ttk.Entry(input_frame, textvariable=holding_var).grid(row=3, column=1, padx=5, pady=5, sticky=tk.EW)
         
         # Pulsanti
         btn_frame = ttk.Frame(input_frame)
@@ -243,12 +276,12 @@ class EOQ_GUI:
         ttk.Button(
             btn_frame, 
             text="Calcola", 
-            command=lambda: self.calcola_manuale(
-                anno_var.get(),
-                domanda_var.get(),
+            command=lambda: self.user_input_calculation(
+                year_var.get(),
+                demand_var.get(),
                 setup_var.get(),
-                mantenimento_var.get(),
-                manual_win
+                holding_var.get(),
+                manual_window
             ),
             width=10
         ).pack(side=tk.LEFT, padx=10)
@@ -256,31 +289,35 @@ class EOQ_GUI:
         ttk.Button(
             btn_frame, 
             text="Annulla", 
-            command=manual_win.destroy,
+            command=manual_window.destroy,
             width=10
         ).pack(side=tk.RIGHT, padx=10)
     
-    def calcola_manuale(self, anno, domanda, setup, mantenimento, window):
+    def user_input_calculation(self, year, demand, setup, holding, window):
         # Esegue il calcolo per l'input manuale
         try:
-            anno = int(anno)
-            domanda = float(domanda)
-            setup = float(setup)
-            mantenimento = float(mantenimento)
+            # Valido l'input per permettere all'utente di usare sia il punto che la virgola come separatore decimale
+            year = int(year)
+            if year <= 1970:
+                raise ValueError("L'anno deve essere maggiore o uguale a 1970")
             
-            if any(val <= 0 for val in [domanda, setup, mantenimento]):
+            demand = float(demand.replace(',', '.'))
+            setup = float(setup.replace(',', '.'))
+            holding = float(holding.replace(',', '.'))
+            
+            if any(val <= 0 for val in [demand, setup, holding]):
                 raise ValueError("Tutti i valori devono essere positivi")
             
             # Calcolo
-            calc = EOQ_calculator()
-            calc.anno = anno
-            calc.domanda_annua = domanda
-            calc.costo_setup = setup
-            calc.costo_mantenimento = mantenimento
-            calc.calculate()
+            calculator = EOQCalculator()
+            calculator.anno = year
+            calculator.domanda_annua = demand
+            calculator.costo_setup = setup
+            calculator.costo_mantenimento = holding
+            calculator.calculate_EOQ()
             
-            # Aggiungi risultati alla tabella
-            self.add_to_table(calc.get_results_dict())
+            # Aggiungi risultati alla tabella e ordina
+            self.add_to_table(calculator.get_results_dict())
             self.status_var.set("Calcolo manuale completato con successo")
             window.destroy()
             
@@ -289,29 +326,53 @@ class EOQ_GUI:
         except Exception as e:
             messagebox.showerror("Errore", f"Si è verificato un errore: {str(e)}")
     
-    def calcola_da_json(self):
-        # Esegue il calcolo dai dati nel file JSON
+    def calculate_from_json(self):
         try:
-            calc = EOQ_calculator()
-            results = calc.u(json_file_path)
-            
-            if results and "error" in results[0]:
+            calculator = EOQCalculator()
+            results, invalid_years = calculator.read_from_json(PERCORSO_JSON)
+
+            if not results:
+                self.status_var.set("Nessun dato da elaborare")
+                return
+                
+            if "error" in results[0]:
                 messagebox.showerror("Errore", results[0]["error"])
                 return
-            
-            # Aggiungi nuovi risultati
+
+            # Crea un set con i dati presenti nel file json per la rimozione
+            json_years = set()
             for result in results:
-                self.add_to_table(result)
+                if "Anno" in result:
+                    json_years.add(str(result["Anno"]))
             
-            self.status_var.set(f"Calcolo da JSON completato: {len(results)} record elaborati")
+            # Rimuove i record esistenti con gli stessi anni
+            for item in self.results_tree.get_children():
+                values = self.results_tree.item(item, 'values')
+                if values:
+                    year_in_table = values[0]
+                    if year_in_table in json_years:
+                        self.results_tree.delete(item)
+            
+            # Ordina i risultati per anno prima di aggiungerli alla tabella
+            sorted_results = sorted(results, key=lambda x: int(x.get("Anno", 0)))
+
+            # Aggiorna i nuovi risultati
+            for result in sorted_results:
+                self.add_to_table(result, sort_after_add=False) # Non ordinare dopo ogni singola aggiunta qui
+
+            self.sort_table_by_year() # Ordina una sola volta alla fine
+            self.status_var.set(
+                f"Calcolo da JSON completato: {len(results)}/{len(invalid_years)+len(results)} record calcolati"
+                )
             
         except Exception as e:
             messagebox.showerror("Errore", f"Si è verificato un errore: {str(e)}")
-    
-    def add_to_table(self, result):
+
+    def add_to_table(self, result, sort_after_add=True):
         # Aggiunge una riga alla tabella dei risultati
         values = (
             result.get("Anno", ""),
+            result.get("Domanda Annua (pz)", ""),
             result.get("EOQ (pz)", ""),
             result.get("Costo Ordini (€)", ""),
             result.get("Costo Magazzino (€)", ""),
@@ -320,7 +381,37 @@ class EOQ_GUI:
             result.get("Giorni tra ordini", "")
         )
         self.results_tree.insert("", tk.END, values=values)
+        if sort_after_add:
+            self.sort_table_by_year()
     
+    def sort_table_by_year(self):
+        # Raccogli tutti gli elementi dalla treeview
+        items = self.results_tree.get_children()
+
+        # Prepara i dati per l'ordinamento: (anno, item_id)
+        # item_id è necessario per poter riordinare gli elementi nella treeview
+        data_to_sort = []
+        for item_id in items:
+            values = self.results_tree.item(item_id, 'values')
+            if values and values[0] != "":
+                try:
+                    year = int(values[0])
+                    data_to_sort.append((year, item_id, values)) # Include anche i valori originali per reinserirli
+                except ValueError:
+                    # Ignora o gestisci righe con anno non numerico
+                    pass
+
+        # Ordina i dati in base all'anno
+        data_to_sort.sort(key=lambda x: x[0])
+
+        # Rimuovi tutti gli elementi esistenti dalla treeview
+        for item_id in items:
+            self.results_tree.delete(item_id)
+
+        # Reinserisci gli elementi ordinati
+        for year, item_id, values in data_to_sort:
+            self.results_tree.insert("", tk.END, values=values)
+
     def clear_results(self):
         # Pulisce la tabella dei risultati
         for item in self.results_tree.get_children():

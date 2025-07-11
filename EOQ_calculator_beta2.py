@@ -87,7 +87,7 @@ class EOQ_calculator:
             365 / self.ordini_annui
         )
 
-    def calcolate_from_json(self, json_file_path):
+    def calculate_from_json(self, json_file_path):
         ''' questa funzione legge i dati appartenenti a diversi anni 
         da un file JSON e itera ad ogni anno per calcolare l'EOQ '''
 
@@ -179,7 +179,7 @@ class EOQ_application:
             continua = input("\nVuoi fare un altro calcolo? (s/n): ").lower()
             if continua != 's':
                 break '''
-        self.calculator.calcolate_from_json(json_file_path)
+        self.calculator.calculate_from_json(json_file_path)
         print("Programma terminato.")
 
 
