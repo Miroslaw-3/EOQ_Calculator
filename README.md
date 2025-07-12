@@ -42,7 +42,7 @@ Questo programma calcola il **Lotto Economico di Ordinazione (EOQ)** e i costi a
 
 ### Requisiti di Sistema
 
-  * Python 3.x
+  * Python 3.13.15
   * Librerie: tkinter, math, json
 
 -----
@@ -74,7 +74,7 @@ Il programma legge dati da `dati.json` con questo formato:
 
 1.  **Anno**:
 
-      * Deve essere \> 1970
+      * Deve essere \> 1900
       * Valori non validi vengono scartati con warning
 
 2.  **Valori numerici**:
