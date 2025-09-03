@@ -1,0 +1,72 @@
+INIZIO PROGRAMMA
+CLASSE EOQ_Calculator
+  // Variabili per i dati di input e i risultati del calcolo
+  domanda_annua
+  costo_setup
+  costo_mantenimento
+  eoq
+  costi_totali
+  costi_ordinazione
+  costi_mantenimento
+  ordini_annui
+  tempo_tra_ordini
+
+  PROCEDURA INIZIALIZZA()
+    INIZIALIZZA tutte le variabili a zero
+  FINE PROCEDURA
+
+  PROCEDURA get_input()
+    CHIEDI all'utente di inserire Domanda Annua
+    CHIEDI all'utente di inserire Costo Setup
+    CHIEDI all'utente di inserire Costo Mantenimento
+  FINE PROCEDURA
+
+  PROCEDURA calculate()
+    // Calcola il Lotto Economico di Ordinazione (EOQ)
+    IMPOSTA eoq usando la formula EOQ: RADICE_QUADRATA((2 * Domanda * Costo_Setup) / Costo_Mantenimento)
+
+    // Calcola i costi di ordinazione e mantenimento
+    IMPOSTA costi_ordinazione
+    IMPOSTA costi_mantenimento
+    IMPOSTA costi_totali = costi_ordinazione + costi_mantenimento
+
+    // Calcola il numero di ordini annui e il tempo tra gli ordini
+    IMPOSTA ordini_annui
+    IMPOSTA tempo_tra_ordini
+  FINE PROCEDURA
+
+  PROCEDURA show_results()
+    STAMPA un riepilogo formattato di tutti i risultati calcolati:
+      - EOQ (Quantità)
+      - Costo Ordini/Anno
+      - Costo Magazzino/Anno
+      - COSTO TOTALE
+      - Ordini/Anno
+      - Ogni Quanto Ordinare?
+  FINE PROCEDURA
+FINE CLASSE
+
+CLASSE EOQ_Application
+  calculator: EOQ_Calculator
+
+  PROCEDURA INIZIALIZZA()
+    CREA un nuovo oggetto EOQ_Calculator
+  FINE PROCEDURA
+
+  PROCEDURA run()
+    RIPETI
+      ESEGUI get_input() dal calculator
+      ESEGUI i calcoli (calculator.calculate())
+      MOSTRA i risultati (calculator.show_results())
+
+      CHIEDI all'utente se vuole fare un altro calcolo
+    FINCHÉ l'utente vuole continuare
+    STAMPA "Programma terminato."
+  FINE PROCEDURA
+FINE CLASSE
+
+// Punto di ingresso principale del programma
+INIZIO PROGRAMMA
+  CREA un nuovo oggetto EOQ_Application
+  AVVIA l'applicazione (app.run())
+FINE PROGRAMMA
