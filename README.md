@@ -1,4 +1,4 @@
-# EOQ Calculator
+# EOQ Calculator by Mirko Benenati
 
 -----
 
